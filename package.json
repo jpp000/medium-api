@@ -1,0 +1,70 @@
+{
+  "name": "medium-api",
+  "version": "v1.0.2",
+  "main": "index.js",
+  "repository": "git@github.com:amigoapp/boilerplate-api.git",
+  "author": "Augusto Ferreira <augusto.ferreira@amigoapp.com.br>",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 16",
+    "pnpm": ">= 8"
+  },
+  "scripts": {
+    "start": "node build/index.js",
+    "start:dev": "nodemon --delay 500ms --inspect --exec babel-node index.js",
+    "lint": "eslint --ext .js ./src",
+    "lint:fix": "yarn lint --fix",
+    "test": "NODE_ENV=test mocha --recursive ./src/**/*.spec.js",
+    "test:unit": "NODE_ENV=test mocha ./src/test/unit",
+    "test:integration": "NODE_ENV=test mocha ./src/test/integration",
+    "build": "yarn build:api && yarn build:templates && yarn upload-sourcemaps",
+    "upload-sourcemaps": "node upload-sourcemaps.js",
+    "build:api": "babel ./index.js --out-dir ./build --source-maps && babel ./src --out-dir ./build/src --source-maps",
+    "build:templates": "copy './src/templates/*.html' './build/src/templates'"
+  },
+  "dependencies": {
+    "@bugsnag/js": "^7.16.1",
+    "@bugsnag/plugin-express": "^7.16.1",
+    "@bugsnag/source-maps": "^2.3.1",
+    "aws-sdk": "^2.1071.0",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "bwip-js": "^3.0.4",
+    "chalk": "4",
+    "cors": "^2.8.5",
+    "currency.js": "^2.0.4",
+    "dotenv": "^16.0.0",
+    "exceljs": "^4.3.0",
+    "express": "^4.17.2",
+    "handlebars": "^4.7.7",
+    "helmet": "^5.0.2",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.1",
+    "nodemon": "^3.1.3",
+    "pg": "^8.7.3",
+    "pg-hstore": "^2.3.4",
+    "puppeteer": "^13.2.0",
+    "redis": "^3.1.2",
+    "sanitize-html": "^2.7.0",
+    "sequelize": "^6.16.1",
+    "sequelize-cli": "^6.6.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "yup": "^0.32.11"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.17.0",
+    "@babel/core": "^7.17.2",
+    "@babel/node": "^7.16.8",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/register": "^7.17.0",
+    "babel-plugin-module-resolver": "^4.1.0",
+    "copy": "^0.3.2",
+    "eslint": "^8.8.0",
+    "semver": "^7.3.5"
+  },
+  "resolutions": {
+    "graceful-fs": "4.x.x"
+  }
+}

@@ -1,0 +1,22 @@
+services:
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - db
+  #   ports:
+  #     - "3000:3000"
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ".:/app"
+
+  db:
+    image: postgres:latest
+    ports:
+     - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=medium-db
