@@ -26,7 +26,7 @@ module.exports = {
 					key: "id",
 				},
 			},
-			likes: {
+			total_likes: {
 				type: Sequelize.INTEGER,
 				allowNull: false,
 				defaultValue: 0,

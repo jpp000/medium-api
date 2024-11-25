@@ -1,6 +1,5 @@
 import { pick } from "lodash";
 import { compare, hash } from "bcrypt";
-import ExceptionUtils from "@utils";
 import { AuthUtils } from "@utils";
 import { UserRepository } from "../repositories";
 
@@ -15,7 +14,7 @@ class UserService {
 		try {
 			user.password = await this.hashPassword(user.password, 6);
 
-			const userCreated = await this.userRepository.create(user, {
+			const userCreated = await this.userRepository.create({...user}, {
 				transaction,
 			});
 
@@ -31,17 +30,14 @@ class UserService {
 	async login(data) {
 		const { email, password } = data;
 
-		const user = await this.userRepository.findByEmail(email, {
-			attributes: ["id", "email", "password"],
-			raw: false,
-		});
+		const user = await this.userRepository.findByEmail(email);
 
 		if (!user) {
-			throw new ExceptionUtils("NOT_FOUND");
+			throw new Error("User not found");
 		}
 
 		if (!this.isValidPassword(password, user.password)) {
-			throw new ExceptionUtils("INVALID_PASSWORD");
+			throw new Error("Wrong password");
 		}
 
 		const token = AuthUtils.generateToken({ userId: user.id });
@@ -49,17 +45,13 @@ class UserService {
 		return { user: pick(user, ["id", "email", "name"]), token };
 	}
 
-	async get(id) {
-		const user = await this.userRepository.findOne(
-			{ id, is_deleted: false },
-			{
-				attributes: ["id", "name", "email", "created_at"],
-				raw: false,
-			}
-		);
+	async get({ id }) {
+		const user = await this.userRepository.findOne({
+			id,
+		});
 
 		if (!user) {
-			throw new ExceptionUtils("NOT_FOUND");
+			throw new Error("User not found");
 		}
 
 		return pick(user, ["id", "name", "email", "created_at"]);
@@ -69,16 +61,15 @@ class UserService {
 		const transaction = await this.userRepository.transaction();
 
 		try {
-			if (changes.password) {
-				changes.password = await this.hashPassword(
-					changes.password,
-					10
-				);
+			const userExists = await this.userRepository.findOne({ id });
+
+			if (!userExists) {
+				throw new Error("User not found");
 			}
 
 			const [, userUpdated] = this.userRepository.update(
 				changes,
-				{ ...filter, is_deleted: false },
+				filter,
 				{
 					transaction,
 					returning: true,
@@ -94,19 +85,67 @@ class UserService {
 		}
 	}
 
-	async delete(filter) {
+	async delete({ id }) {
 		const transaction = await this.userRepository.transaction();
 
 		try {
-			const userDeleted = await this.userRepository.update(
-				{ is_deleted: true },
-				{ ...filter, is_deleted: false },
-				{ transaction }
+			const userExists = await this.userRepository.findOne({ id });
+
+			if (!userExists) {
+				throw new Error("User not found");
+			}
+
+			const userDeleted = await this.userRepository.delete(
+				{ id },
+				{
+					transaction,
+				}
 			);
 
 			await transaction.commit();
 
 			return userDeleted;
+		} catch (error) {
+			await transaction.rollback();
+			throw error;
+		}
+	}
+
+	async updateUserPassword({ userId, oldPassword, newPassword }) {
+		const transaction = await this.userRepository.transaction();
+
+		try {
+			const user = await this.userRepository.findOne(
+				{
+					id: userId,
+				},
+				{ attributes: ["id", "password"], raw: false }
+			);
+
+			if (!user) {
+				throw new Error("User not found");
+			}
+
+			const isOldPasswordValid = await this.isValidPassword(
+				oldPassword,
+				user.password
+			);
+
+			if (!isOldPasswordValid) {
+				return false;
+			}
+
+			const hashedNewPassword = await this.hashPassword(newPassword, 10);
+
+			await this.userRepository.update(
+				{ password: hashedNewPassword },
+				{ id: userId },
+				{ transaction }
+			);
+
+			await transaction.commit();
+
+			return true;
 		} catch (error) {
 			await transaction.rollback();
 			throw error;

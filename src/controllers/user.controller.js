@@ -5,11 +5,20 @@ export class UserController extends BaseController {
 	constructor() {
 		super();
 		this.userService = new UserService();
+
+		this.bindActions(["create", "login", "get", "update", "delete"]);
 	}
 
 	async create(req, res) {
 		try {
-			const data = await this.userService.create(req.body);
+			const { name, email, password } = req.data;
+
+			const data = await this.userService.create({
+				name,
+				email,
+				password,
+			});
+
 			this.successHandler(data, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -18,7 +27,9 @@ export class UserController extends BaseController {
 
 	async login(req, res) {
 		try {
-			const data = await this.userService.login(req.body);
+			const { email, password } = req.data;
+
+			const data = await this.userService.login({ email, password });
 			this.successHandler(data, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -27,7 +38,10 @@ export class UserController extends BaseController {
 
 	async get(req, res) {
 		try {
-			const data = await this.userService.get(req.params);
+			const { id } = req.filter;
+
+			const data = await this.userService.get({ id });
+
 			this.successHandler(data, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -37,8 +51,8 @@ export class UserController extends BaseController {
 	async update(req, res) {
 		try {
 			await this.userService.update({
-				changes: req.body,
-				filter: req.params,
+				changes: req.data,
+				filter: req.filter,
 			});
 			this.successHandler(true, res);
 		} catch (error) {
@@ -48,7 +62,9 @@ export class UserController extends BaseController {
 
 	async delete(req, res) {
 		try {
-			await this.userService.delete(req.params);
+			const { id } = req.filter;
+
+			await this.userService.delete({ id });
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);

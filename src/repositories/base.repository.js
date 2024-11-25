@@ -9,23 +9,27 @@ class BaseRepository {
 
 	findOne(filter, options = {}) {
 		return this.model.findOne({
-			where: { ...filter },
+			where: filter,
 			...options,
 		});
 	}
 
 	update(data, filter, options = {}) {
 		return this.model.update(data, {
-			where: { ...filter },
+			where: filter,
 			...options,
 		});
 	}
 
-	delete(id, options = {}) {
+	delete(filter, options = {}) {
 		return this.model.destroy({
-			where: { id },
+			where: filter,
 			...options,
 		});
+	}
+
+	transaction() {
+		return this.model.sequelize.transaction();
 	}
 }
 

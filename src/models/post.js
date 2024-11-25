@@ -1,6 +1,6 @@
 import BaseModel from "./base";
 
-export class Post extends BaseModel {
+export default class Post extends BaseModel {
 	static load(sequelize, DataTypes) {
 		return super.init(
 			{
@@ -8,25 +8,16 @@ export class Post extends BaseModel {
 					type: DataTypes.INTEGER,
 					primaryKey: true,
 					autoIncrement: true,
-					allowNull: false,
 				},
 				title: {
 					type: DataTypes.STRING,
 					allowNull: false,
 				},
 				content: {
-					type: DataTypes.STRING,
+					type: DataTypes.TEXT,
 					allowNull: false,
 				},
-				user_id: {
-					type: DataTypes.INTEGER,
-					allowNull: false,
-					references: {
-						model: "users",
-						key: "id",
-					},
-				},
-				likes: {
+				total_likes: {
 					type: DataTypes.INTEGER,
 					allowNull: false,
 					defaultValue: 0,
@@ -36,7 +27,7 @@ export class Post extends BaseModel {
 				paranoid: true,
 				timestamps: true,
 				sequelize,
-				modelName: "post",
+				modelName: "Post",
 				tableName: "posts",
 				createdAt: "created_at",
 				updatedAt: "updated_at",
@@ -44,18 +35,22 @@ export class Post extends BaseModel {
 				scopes: {
 					withUserLike: (id) => ({
 						attributes: [
-							sequelize.literal(
-								`CASE WHEN (
-									SELECT 1
-									FROM post_likes
-									WHERE post_likes.post_id = post.id
-									AND post_likes.user_id = :user_id
-									AND post_likes.deleted_at is NULL
-								) is not null THEN true ELSE false END`
-							),
-							"is_liked",
+							[
+								sequelize.literal(
+									`CASE WHEN (
+											SELECT 1
+											FROM post_likes
+											WHERE post_likes.post_id = post.id
+											AND post_likes.user_id = :user_id
+											AND post_likes.deleted_at is NULL
+										) is not null THEN true ELSE false END`
+								),
+								"is_liked",
+							],
 						],
-						replacements: { user_id: id },
+						replacements: {
+							user_id: id,
+						},
 					}),
 				},
 			}

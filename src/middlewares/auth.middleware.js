@@ -2,7 +2,7 @@ import AuthUtils from "../utils/auth";
 
 export class AuthMiddleware {
 	static isAuthenticated(req, res, next) {
-		const token = AuthUtils.getBearerToken();
+		const token = AuthUtils.getBearerToken(req);
 
 		if (!token) {
 			return res.status(403).json({ message: "JWT token is missing." });
@@ -10,7 +10,7 @@ export class AuthMiddleware {
 
 		try {
 			const decodedToken = AuthUtils.decodeData(token);
-			req.user = decodedToken.userId;
+			req.userId = decodedToken.userId;
 
 			next();
 		} catch (error) {

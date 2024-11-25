@@ -1,6 +1,6 @@
 import fs from "fs";
 import Sequelize from "sequelize";
-import config from "./config"; // Changed import to correctly reference the config file
+import config from "./config";
 
 import Logger from "../utils/logger";
 
@@ -41,7 +41,7 @@ class Database {
 			.forEach((filePath) => {
 				const Model = require(filePath).default;
 
-				if (!Model || Model.name === "BaseModel") {
+				if (!Model || !Model.name || Model.name === "BaseModel") {
 					return;
 				}
 
