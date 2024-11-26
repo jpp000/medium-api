@@ -8,7 +8,6 @@ export class PostService {
 
 	async create(postData) {
 		const transaction = await this.postRepository.transaction();
-
 		try {
 			const postCreated = await this.postRepository.create(postData, {
 				transaction,
@@ -70,6 +69,8 @@ export class PostService {
 		const transaction = await this.postRepository.transaction();
 
 		try {
+			await this.get({ id });
+
 			await this.postRepository.delete(
 				{ id },
 				{

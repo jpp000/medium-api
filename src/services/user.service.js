@@ -14,9 +14,12 @@ class UserService {
 		try {
 			user.password = await this.hashPassword(user.password, 6);
 
-			const userCreated = await this.userRepository.create({...user}, {
-				transaction,
-			});
+			const userCreated = await this.userRepository.create(
+				{ ...user },
+				{
+					transaction,
+				}
+			);
 
 			await transaction.commit();
 

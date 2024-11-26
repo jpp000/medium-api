@@ -10,7 +10,7 @@ export class UserRepository extends BaseRepository {
 	findByEmail(
 		email,
 		options = {
-			attributes: ["id", "email", "password"],
+			attributes: ["id", "name", "email", "password"],
 			raw: false,
 		}
 	) {
@@ -28,6 +28,19 @@ export class UserRepository extends BaseRepository {
 		}
 	) {
 		return this.model.findOne({
+			where: filter,
+			...options,
+		});
+	}
+
+	static userExists(
+		filter,
+		options = {
+			attributes: ["id", "name", "email", "created_at"],
+			raw: false,
+		}
+	) {
+		return User.findOne({
 			where: filter,
 			...options,
 		});
