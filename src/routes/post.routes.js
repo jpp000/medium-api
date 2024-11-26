@@ -58,9 +58,9 @@ export class PostRoutes extends BaseRoutes {
 	}
 
 	setup() {
-		this.router.use(this.setupPublicRoutes())
-		this.router.use(this.setupPrivateRoutes())
+		this.router.use(this.setupPublicRoutes());
+		this.router.use(this.setupPrivateRoutes());
 
-		return this.router
+		return this.router;
 	}
 }

@@ -1,4 +1,4 @@
-import { UserRepository } from "../repositories";
+import UserService from "../services/user.service";
 import AuthUtils from "../utils/auth";
 
 export class AuthMiddleware {
@@ -14,12 +14,10 @@ export class AuthMiddleware {
 
 			const userId = decodedToken.userId;
 
-			const userExists = await UserRepository.userExists({ id: userId });
+			const userExists = await UserService.userExists(userId);
 
 			if (!userExists) {
-				return res
-					.status(403)
-					.json({ message: "User no longer exists." });
+				throw new Error("User not found");
 			}
 
 			req.userId = userId;

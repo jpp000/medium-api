@@ -3,16 +3,16 @@ import { UserController } from "../controllers";
 import { AuthMiddleware } from "../middlewares";
 import { UserSchema } from "../schemas";
 import { BaseRoutes } from "./base.routes";
-
+import { User } from "../models";
 
 export class UserRoutes extends BaseRoutes {
 	constructor() {
-		super()
+		super();
 		this.userController = new UserController();
 	}
 
 	setupPublicRoutes() {
-		const publicRoutes = new Router()
+		const publicRoutes = new Router();
 
 		publicRoutes.post(
 			"/",
@@ -24,14 +24,17 @@ export class UserRoutes extends BaseRoutes {
 			this.SchemaValidator.validate(UserSchema.login),
 			this.userController.login
 		);
+		publicRoutes.get("/", async (req, res) => {
+			return res.status(200).json(await User.findAll());
+		});
 
-		return publicRoutes
+		return publicRoutes;
 	}
 
 	setupPrivateRoutes() {
-		const privateRoutes = new Router()
+		const privateRoutes = new Router();
 
-		privateRoutes.use(AuthMiddleware.isAuthenticated)
+		privateRoutes.use(AuthMiddleware.isAuthenticated);
 
 		privateRoutes.get(
 			"/:id",
@@ -43,19 +46,24 @@ export class UserRoutes extends BaseRoutes {
 			this.SchemaValidator.validate(UserSchema.update),
 			this.userController.update
 		);
+		privateRoutes.put(
+			"/:id/password",
+			this.SchemaValidator.validate(UserSchema.updatePassword),
+			this.userController.updatePassword
+		);
 		privateRoutes.delete(
 			"/:id",
 			this.SchemaValidator.validate(UserSchema.delete),
 			this.userController.delete
 		);
 
-		return privateRoutes
+		return privateRoutes;
 	}
 
 	setup() {
-		this.router.use(this.setupPublicRoutes())
-		this.router.use(this.setupPrivateRoutes())
+		this.router.use(this.setupPublicRoutes());
+		this.router.use(this.setupPrivateRoutes());
 
-		return this.router
+		return this.router;
 	}
 }

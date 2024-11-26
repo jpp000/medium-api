@@ -1,17 +1,16 @@
-import { PostLikeRepository, PostRepository } from "../repositories";
+import { Post, PostLike } from "../models";
 
 export class PostService {
-	constructor() {
-		this.postRepository = new PostRepository();
-		this.postLikeRepository = new PostLikeRepository();
-	}
+	async create({ title, content, user_id }) {
+		const transaction = await Post.sequelize.transaction();
 
-	async create(postData) {
-		const transaction = await this.postRepository.transaction();
 		try {
-			const postCreated = await this.postRepository.create(postData, {
-				transaction,
-			});
+			const postCreated = await Post.create(
+				{ title, content, user_id },
+				{
+					transaction,
+				}
+			);
 
 			await transaction.commit();
 
@@ -23,35 +22,33 @@ export class PostService {
 	}
 
 	async get({ id }) {
-		const post = await this.postRepository.findOne({ id });
+		const post = await Post.findOne({ where: { id } });
 
 		if (!post) {
-			throw new Error("NOT_FOUND");
+			throw new Error("Post not found");
 		}
 
 		return post;
 	}
 
 	async list() {
-		return this.postRepository.findAll();
+		return Post.findAll();
 	}
 
 	async update({ changes, filter }) {
-		const transaction = await this.postRepository.transaction();
+		const transaction = await Post.sequelize.transaction();
 
 		try {
 			const { title, content } = changes;
 			const { postId } = filter;
 
-			await this.postRepository.update(
+			await Post.update(
 				{
 					title,
 					content,
 				},
 				{
-					id: postId,
-				},
-				{
+					where: { id: postId },
 					transaction,
 				}
 			);
@@ -66,17 +63,15 @@ export class PostService {
 	}
 
 	async delete({ id }) {
-		const transaction = await this.postRepository.transaction();
+		const transaction = await Post.sequelize.transaction();
 
 		try {
 			await this.get({ id });
 
-			await this.postRepository.delete(
-				{ id },
-				{
-					transaction,
-				}
-			);
+			await Post.destroy({
+				where: { id },
+				transaction,
+			});
 
 			await transaction.commit();
 
@@ -88,27 +83,26 @@ export class PostService {
 	}
 
 	async like({ postId, userId }) {
-		const transaction = await this.postRepository.transaction();
+		const transaction = await Post.sequelize.transaction();
 
 		try {
-			const post = await this.postRepository.findOne({
-				id: postId,
+			const post = await Post.findOne({
+				where: { id: postId },
 			});
 
 			if (!post) {
 				throw new Error("Post not found");
 			}
 
-			const hasLike = await this.postLikeRepository.findOne({
-				post_id: postId,
-				user_id: userId,
+			const hasLike = await PostLike.findOne({
+				where: { post_id: postId, user_id: userId },
 			});
 
 			if (hasLike) {
 				throw new Error("Post already liked");
 			}
 
-			await this.postLikeRepository.create(
+			await PostLike.create(
 				{
 					post_id: postId,
 					user_id: userId,
@@ -118,7 +112,11 @@ export class PostService {
 				}
 			);
 
-			await this.postRepository.addLike({ id: postId }, { transaction });
+			await Post.increment("total_likes", {
+				by: 1,
+				where: { id: postId },
+				transaction,
+			});
 
 			await transaction.commit();
 
@@ -130,36 +128,37 @@ export class PostService {
 	}
 
 	async dislike({ postId, userId }) {
-		const transaction = await this.postRepository.transaction();
+		const transaction = await Post.sequelize.transaction();
 
 		try {
-			const post = await this.postRepository.findOne({ id: postId });
+			const post = await Post.findOne({ where: { id: postId } });
 
 			if (!post) {
 				throw new Error("Post not found");
 			}
 
-			const hasLike = await this.postLikeRepository.findOne({
-				post_id: postId,
-				user_id: userId,
+			const hasLike = await PostLike.findOne({
+				where: { post_id: postId, user_id: userId },
 			});
 
 			if (!hasLike) {
 				throw new Error("Post already disliked");
 			}
 
-			await this.postLikeRepository.delete(
+			await PostLike.destroy(
 				{
-					post_id: postId,
-					user_id: userId,
+					where: { post_id: postId, user_id: userId },
 				},
 				{ transaction }
 			);
 
-			await this.postRepository.removeLike(
-				{ id: postId },
-				{ transaction }
-			);
+			await Post.decrement("total_likes", {
+				by: 1,
+				where: {
+					id: postId,
+				},
+				transaction,
+			});
 
 			await transaction.commit();
 

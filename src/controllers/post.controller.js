@@ -41,9 +41,12 @@ export class PostController extends BaseController {
 	async create(req, res) {
 		try {
 			const { userId } = req;
+			const { title, content } = req.data;
+
 			const postCreated = await this.postService.create({
-				...req.data,
-				userId,
+				title,
+				content,
+				user_id: userId,
 			});
 			this.successHandler(postCreated, res);
 		} catch (error) {
@@ -53,10 +56,11 @@ export class PostController extends BaseController {
 
 	async update(req, res) {
 		try {
-			const { data, filter } = req;
+			const { title, content } = req.data;
+
 			await this.postService.update({
-				changes: data,
-				filter,
+				changes: { title, content },
+				filter: req.filter,
 			});
 
 			this.successHandler(true, res);
@@ -78,8 +82,6 @@ export class PostController extends BaseController {
 
 	async like(req, res) {
 		try {
-			console.log(req.filter)
-
 			const { postId } = req.filter;
 			const { userId } = req;
 

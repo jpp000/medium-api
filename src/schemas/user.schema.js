@@ -31,8 +31,7 @@ const schema = {
 				email: yup.string().required(),
 			})
 			.noUnknown(),
-
-		params: findByIdSchema,
+		params: findByIdSchema.params,
 	},
 	updatePassword: {
 		body: yup
@@ -41,7 +40,7 @@ const schema = {
 				newPassword: yup.string().required(),
 			})
 			.noUnknown(),
-		params: findByIdSchema,
+		params: findByIdSchema.params,
 	},
 	get: findByIdSchema,
 	delete: findByIdSchema,

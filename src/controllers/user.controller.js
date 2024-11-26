@@ -6,7 +6,14 @@ export class UserController extends BaseController {
 		super();
 		this.userService = new UserService();
 
-		this.bindActions(["create", "login", "get", "update", "delete"]);
+		this.bindActions([
+			"create",
+			"login",
+			"get",
+			"update",
+			"updatePassword",
+			"delete",
+		]);
 	}
 
 	async create(req, res) {
@@ -50,11 +57,28 @@ export class UserController extends BaseController {
 
 	async update(req, res) {
 		try {
+			const { name, email } = req.data;
+
 			await this.userService.update({
-				changes: req.data,
+				changes: { name, email },
 				filter: req.filter,
 			});
 			this.successHandler(true, res);
+		} catch (error) {
+			this.errorHandler(error, req, res);
+		}
+	}
+
+	async updatePassword(req, res) {
+		try {
+			const { oldPassword, newPassword } = req.data;
+
+			const response = await this.userService.updatePassword({
+				userId: req.filter.id,
+				oldPassword,
+				newPassword,
+			});
+			this.successHandler(response, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
 		}

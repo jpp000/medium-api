@@ -1,25 +1,18 @@
 import { pick } from "lodash";
 import { compare, hash } from "bcrypt";
 import { AuthUtils } from "@utils";
-import { UserRepository } from "../repositories";
+import { User } from "../models";
 
 class UserService {
-	constructor() {
-		this.userRepository = new UserRepository();
-	}
-
 	async create(user) {
-		const transaction = await this.userRepository.transaction();
+		const transaction = await User.sequelize.transaction();
 
 		try {
 			user.password = await this.hashPassword(user.password, 6);
 
-			const userCreated = await this.userRepository.create(
-				{ ...user },
-				{
-					transaction,
-				}
-			);
+			const userCreated = await User.create(user, {
+				transaction,
+			});
 
 			await transaction.commit();
 
@@ -33,7 +26,11 @@ class UserService {
 	async login(data) {
 		const { email, password } = data;
 
-		const user = await this.userRepository.findByEmail(email);
+		const user = await User.findOne({
+			where: { email },
+			raw: false,
+			attributes: ["id", "name", "email", "password"],
+		});
 
 		if (!user) {
 			throw new Error("User not found");
@@ -49,8 +46,10 @@ class UserService {
 	}
 
 	async get({ id }) {
-		const user = await this.userRepository.findOne({
-			id,
+		const user = await User.findOne({
+			where: { id },
+			attributes: ["id", "name", "email", "created_at"],
+			raw: false,
 		});
 
 		if (!user) {
@@ -61,23 +60,20 @@ class UserService {
 	}
 
 	async update({ changes, filter }) {
-		const transaction = await this.userRepository.transaction();
+		const transaction = await User.sequelize.transaction();
 
 		try {
-			const userExists = await this.userRepository.findOne({ id });
+			const userExists = await UserService.userExists(filter.id);
 
 			if (!userExists) {
 				throw new Error("User not found");
 			}
 
-			const [, userUpdated] = this.userRepository.update(
-				changes,
-				filter,
-				{
-					transaction,
-					returning: true,
-				}
-			);
+			const [, userUpdated] = await User.update(changes, {
+				where: filter,
+				transaction,
+				returning: true,
+			});
 
 			await transaction.commit();
 
@@ -89,21 +85,19 @@ class UserService {
 	}
 
 	async delete({ id }) {
-		const transaction = await this.userRepository.transaction();
+		const transaction = await User.sequelize.transaction();
 
 		try {
-			const userExists = await this.userRepository.findOne({ id });
+			const userExists = await UserService.userExists(id);
 
 			if (!userExists) {
 				throw new Error("User not found");
 			}
 
-			const userDeleted = await this.userRepository.delete(
-				{ id },
-				{
-					transaction,
-				}
-			);
+			const userDeleted = await User.destroy({
+				where: { id },
+				transaction,
+			});
 
 			await transaction.commit();
 
@@ -114,13 +108,13 @@ class UserService {
 		}
 	}
 
-	async updateUserPassword({ userId, oldPassword, newPassword }) {
-		const transaction = await this.userRepository.transaction();
+	async updatePassword({ userId, oldPassword, newPassword }) {
+		const transaction = await User.sequelize.transaction();
 
 		try {
-			const user = await this.userRepository.findOne(
+			const user = await User.findOne(
 				{
-					id: userId,
+					where: { id: userId },
 				},
 				{ attributes: ["id", "password"], raw: false }
 			);
@@ -140,10 +134,12 @@ class UserService {
 
 			const hashedNewPassword = await this.hashPassword(newPassword, 10);
 
-			await this.userRepository.update(
+			await User.update(
 				{ password: hashedNewPassword },
-				{ id: userId },
-				{ transaction }
+				{
+					where: { id: userId },
+					transaction
+				}
 			);
 
 			await transaction.commit();
@@ -161,6 +157,14 @@ class UserService {
 
 	hashPassword(payload, salt) {
 		return hash(payload, salt);
+	}
+
+	static async userExists(id) {
+		const user = await User.findOne({
+			where: { id },
+		});
+
+		return !!user;
 	}
 }
 
