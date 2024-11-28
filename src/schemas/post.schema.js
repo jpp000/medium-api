@@ -26,6 +26,13 @@ const schema = {
 			.noUnknown(),
 		params: findById.params,
 	},
+	list: {
+		query: yup
+			.object({
+				page: yup.number().required(),
+			})
+			.noUnknown(),
+	},
 	get: findById,
 	delete: findById,
 	like: findById,
@@ -33,5 +40,5 @@ const schema = {
 };
 
 export default {
-	...schema
-}
+	...schema,
+};

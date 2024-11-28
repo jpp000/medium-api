@@ -1,4 +1,5 @@
 import { Post, PostLike } from "../models";
+import { PaginationUtils } from "../utils";
 
 export class PostService {
 	async create({ title, content, user_id }) {
@@ -21,8 +22,24 @@ export class PostService {
 		}
 	}
 
-	async get({ id }) {
-		const post = await Post.findOne({ where: { id } });
+	async get({ postId, userId }) {
+		const scopes = [];
+		scopes.push("postUser");
+
+		if (userId) {
+			scopes.push({
+				name: "withUserLike",
+				options: [userId],
+			});
+		}
+
+		const post = await Post.scope(scopes).findOne({
+			where: {
+				id: postId,
+			},
+			raw: false,
+			attributes: ["id", "title", "content", "total_likes", "created_at"],
+		});
 
 		if (!post) {
 			throw new Error("Post not found");
@@ -31,27 +48,57 @@ export class PostService {
 		return post;
 	}
 
-	async list() {
-		return Post.findAll();
+	async list({ page, userId }) {
+		const promises = [];
+		const scopes = [];
+		const Pagination = PaginationUtils.config({
+			page,
+			items_per_page: 20,
+		});
+
+		if (userId) {
+			scopes.push({
+				name: "withUserLike",
+				options: userId,
+			});
+		}
+
+		promises.push(
+			Post.scope(scopes).findAll({
+				...Pagination.getQueryParams(),
+				raw: false,
+				attributes: [
+					"id",
+					"user_id",
+					"title",
+					"content",
+					"total_likes",
+					"created_at",
+				],
+				order: [["created_at", "DESC"]],
+			})
+		);
+
+		if (Pagination.getPage() === 1) {
+			promises.push(Post.count({}));
+		}
+
+		const [posts, totalItems] = await Promise.all(promises);
+
+		return {
+			...Pagination.mount(totalItems),
+			posts,
+		};
 	}
 
-	async update({ changes, filter }) {
+	async update({ changes, postId }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
-			const { title, content } = changes;
-			const { postId } = filter;
-
-			await Post.update(
-				{
-					title,
-					content,
-				},
-				{
-					where: { id: postId },
-					transaction,
-				}
-			);
+			await Post.update(changes, {
+				where: { id: postId },
+				transaction,
+			});
 
 			await transaction.commit();
 

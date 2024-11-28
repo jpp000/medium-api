@@ -10,14 +10,12 @@ export class AuthMiddleware {
 		}
 
 		try {
-			const decodedToken = AuthUtils.decodeData(token);
-
-			const userId = decodedToken.userId;
+			const { userId } = AuthUtils.decodeData(token);
 
 			const userExists = await UserService.userExists(userId);
 
 			if (!userExists) {
-				throw new Error("User not found");
+				throw new Error("User no longer exists.");
 			}
 
 			req.userId = userId;
@@ -25,6 +23,28 @@ export class AuthMiddleware {
 			next();
 		} catch (error) {
 			return res.status(403).json({ message: "Token is invalid." });
+		}
+	}
+
+	static async getExistingToken(req, res, next) {
+		const token = AuthUtils.getBearerToken(req);
+
+		if (!token) {
+			return next();
+		}
+
+		try {
+			const { userId } = AuthUtils.decodeData(token);
+
+			const userExists = await UserService.userExists(userId);
+
+			if (!userExists) {
+				throw new Error("User no longer exists.");
+			}
+
+			req.userId = userId;
+		} finally {
+			return next();
 		}
 	}
 }

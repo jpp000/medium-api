@@ -19,7 +19,10 @@ export class PostController extends BaseController {
 
 	async list(req, res) {
 		try {
-			const posts = await this.postService.list();
+			const { userId } = req;
+			const { page } = req.filter;
+
+			const posts = await this.postService.list({ page, userId });
 
 			this.successHandler(posts, res);
 		} catch (error) {
@@ -30,7 +33,10 @@ export class PostController extends BaseController {
 	async get(req, res) {
 		try {
 			const { postId } = req.filter;
-			const post = await this.postService.get({ id: postId });
+			const post = await this.postService.get({
+				postId,
+				userId: req.userId,
+			});
 
 			this.successHandler(post, res);
 		} catch (error) {
@@ -60,7 +66,7 @@ export class PostController extends BaseController {
 
 			await this.postService.update({
 				changes: { title, content },
-				filter: req.filter,
+				postId: req.filter.postId,
 			});
 
 			this.successHandler(true, res);

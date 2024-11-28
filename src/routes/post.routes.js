@@ -13,7 +13,18 @@ export class PostRoutes extends BaseRoutes {
 	setupPublicRoutes() {
 		const publicRoutes = new Router();
 
-		publicRoutes.get("/", this.postController.list);
+		publicRoutes.use(AuthMiddleware.getExistingToken);
+
+		publicRoutes.get(
+			"/",
+			this.SchemaValidator.validate(PostSchema.list),
+			this.postController.list
+		);
+		publicRoutes.get(
+			"/:postId",
+			this.SchemaValidator.validate(PostSchema.get),
+			this.postController.get
+		);
 
 		return publicRoutes;
 	}
@@ -23,11 +34,6 @@ export class PostRoutes extends BaseRoutes {
 
 		privateRoutes.use(AuthMiddleware.isAuthenticated);
 
-		privateRoutes.get(
-			"/:postId",
-			this.SchemaValidator.validate(PostSchema.get),
-			this.postController.get
-		);
 		privateRoutes.post(
 			"/",
 			this.SchemaValidator.validate(PostSchema.create),

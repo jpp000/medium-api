@@ -1,4 +1,5 @@
 import BaseModel from "./base";
+import User from "./user";
 
 export default class Post extends BaseModel {
 	static load(sequelize, DataTypes) {
@@ -40,7 +41,7 @@ export default class Post extends BaseModel {
 									`CASE WHEN (
 											SELECT 1
 											FROM post_likes
-											WHERE post_likes.post_id = post.id
+											WHERE post_likes.post_id = "Post".id
 											AND post_likes.user_id = :user_id
 											AND post_likes.deleted_at is NULL
 										) is not null THEN true ELSE false END`
@@ -52,6 +53,15 @@ export default class Post extends BaseModel {
 							user_id: id,
 						},
 					}),
+					postUser: {
+						include: [
+							{
+								model: User,
+								as: "user",
+								attributes: ["id", "name", "email"],
+							},
+						],
+					},
 				},
 			}
 		);
