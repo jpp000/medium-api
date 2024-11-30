@@ -56,6 +56,8 @@ export class PostService {
 			items_per_page: 20,
 		});
 
+		scopes.push("postUser");
+
 		if (userId) {
 			scopes.push({
 				name: "withUserLike",
