@@ -1,50 +1,46 @@
-import UserService from "../services/user.service";
 import AuthUtils from "../utils/auth";
 
 export class AuthMiddleware {
+	static routesToSkip = [{ method: "GET", baseUrl: "/posts" }];
+
 	static async isAuthenticated(req, res, next) {
-		const token = AuthUtils.getBearerToken(req);
-
-		if (!token) {
-			return res.status(403).json({ message: "JWT token is missing." });
-		}
-
 		try {
-			const { userId } = AuthUtils.decodeData(token);
+			const token = AuthUtils.getBearerToken(req);
 
-			const userExists = await UserService.userExists(userId);
-
-			if (!userExists) {
-				throw new Error("User no longer exists.");
+			if (AuthMiddleware.isRouteToSkip(req)) {
+				await AuthMiddleware.handleSkippedRoute(req, token);
+				return next();
 			}
 
-			req.userId = userId;
+			if (!token) {
+				return res
+					.status(403)
+					.json({ message: "JWT token is missing." });
+			}
 
-			next();
+			const { userId } = AuthUtils.decodeData(token);
+			req.auth = { user_id: userId };
+
+			return next();
 		} catch (error) {
+			console.error("Authentication error:", error);
 			return res.status(403).json({ message: "Token is invalid." });
 		}
 	}
 
-	static async getExistingToken(req, res, next) {
-		const token = AuthUtils.getBearerToken(req);
+	static isRouteToSkip(req) {
+		return AuthMiddleware.routesToSkip.some(
+			(route) =>
+				req.method === route.method && req.baseUrl === route.baseUrl
+		);
+	}
 
-		if (!token) {
-			return next();
-		}
-
-		try {
-			const { userId } = AuthUtils.decodeData(token);
-
-			const userExists = await UserService.userExists(userId);
-
-			if (!userExists) {
-				throw new Error("User no longer exists.");
+	static async handleSkippedRoute(req, token) {
+		if (token) {
+			const decodedToken = AuthUtils.decodeData(token);
+			if (decodedToken && decodedToken.userId) {
+				req.auth = { user_id: decodedToken.userId };
 			}
-
-			req.userId = userId;
-		} finally {
-			return next();
 		}
 	}
 }

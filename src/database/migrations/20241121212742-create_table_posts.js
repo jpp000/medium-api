@@ -25,6 +25,7 @@ module.exports = {
 					model: "users",
 					key: "id",
 				},
+				onDelete: "CASCADE",
 			},
 			total_likes: {
 				type: Sequelize.INTEGER,

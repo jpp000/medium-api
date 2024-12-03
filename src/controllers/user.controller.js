@@ -18,15 +18,11 @@ export class UserController extends BaseController {
 
 	async create(req, res) {
 		try {
-			const { name, email, password } = req.data;
+			const { data } = req;
 
-			const data = await this.userService.create({
-				name,
-				email,
-				password,
-			});
+			const userCreated = await this.userService.create(data);
 
-			this.successHandler(data, res);
+			this.successHandler(userCreated, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
 		}
@@ -34,10 +30,10 @@ export class UserController extends BaseController {
 
 	async login(req, res) {
 		try {
-			const { email, password } = req.data;
+			const { data } = req;
 
-			const data = await this.userService.login({ email, password });
-			this.successHandler(data, res);
+			const response = await this.userService.login(data);
+			this.successHandler(response, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
 		}
@@ -45,9 +41,12 @@ export class UserController extends BaseController {
 
 	async get(req, res) {
 		try {
-			const { id } = req.filter;
+			const filter = {
+				id: req.filter.id,
+				user_id: req.auth.user_id,
+			};
 
-			const data = await this.userService.get({ id });
+			const data = await this.userService.get(filter);
 
 			this.successHandler(data, res);
 		} catch (error) {
@@ -57,12 +56,15 @@ export class UserController extends BaseController {
 
 	async update(req, res) {
 		try {
-			const { name, email } = req.data;
+			const options = {
+				changes: req.data,
+				filter: {
+					id: req.filter.id,
+					user_id: req.auth.user_id,
+				},
+			};
 
-			await this.userService.update({
-				changes: { name, email },
-				filter: req.filter,
-			});
+			await this.userService.update(options);
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -71,13 +73,15 @@ export class UserController extends BaseController {
 
 	async updatePassword(req, res) {
 		try {
-			const { oldPassword, newPassword } = req.data;
+			const options = {
+				changes: req.data,
+				filter: {
+					id: req.filter.id,
+					user_id: req.auth.user_id,
+				},
+			};
 
-			const response = await this.userService.updatePassword({
-				userId: req.filter.id,
-				oldPassword,
-				newPassword,
-			});
+			const response = await this.userService.updatePassword(options);
 			this.successHandler(response, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -86,9 +90,12 @@ export class UserController extends BaseController {
 
 	async delete(req, res) {
 		try {
-			const { id } = req.filter;
+			const filter = {
+				id: req.filter.id,
+				user_id: req.auth.user_id,
+			};
 
-			await this.userService.delete({ id });
+			await this.userService.delete(filter);
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);

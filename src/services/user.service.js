@@ -4,13 +4,23 @@ import { AuthUtils } from "@utils";
 import { User } from "../models";
 
 class UserService {
-	async create(user) {
+	async create(data) {
 		const transaction = await User.sequelize.transaction();
 
 		try {
-			user.password = await this.hashPassword(user.password, 6);
+			const userExists = await User.findOne({
+				where: { email: data.email },
+				raw: false,
+				attributes: ["id", "name", "email", "password"],
+			});
 
-			const userCreated = await User.create(user, {
+			if (userExists) {
+				throw new Error("User already created using email provided");
+			}
+
+			data.password = await this.hashPassword(data.password, 6);
+
+			const userCreated = await User.create(data, {
 				transaction,
 			});
 
@@ -23,9 +33,7 @@ class UserService {
 		}
 	}
 
-	async login(data) {
-		const { email, password } = data;
-
+	async login({ email, password }) {
 		const user = await User.findOne({
 			where: { email },
 			raw: false,
@@ -45,9 +53,17 @@ class UserService {
 		return { user: pick(user, ["id", "email", "name"]), token };
 	}
 
-	async get({ id }) {
+	async get(filter) {
+		const loggedUserExists = await UserService.userExists(filter.user_id);
+
+		if (!loggedUserExists) {
+			throw new Error(
+				"Your session has expired or is invalid. Please log in again."
+			);
+		}
+
 		const user = await User.findOne({
-			where: { id },
+			where: { id: filter.id },
 			attributes: ["id", "name", "email", "created_at"],
 			raw: false,
 		});
@@ -63,6 +79,16 @@ class UserService {
 		const transaction = await User.sequelize.transaction();
 
 		try {
+			const loggedUserExists = await UserService.userExists(
+				filter.user_id
+			);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
 			const userExists = await UserService.userExists(filter.id);
 
 			if (!userExists) {
@@ -70,7 +96,9 @@ class UserService {
 			}
 
 			const [, userUpdated] = await User.update(changes, {
-				where: filter,
+				where: {
+					id: filter.id,
+				},
 				transaction,
 				returning: true,
 			});
@@ -84,37 +112,60 @@ class UserService {
 		}
 	}
 
-	async delete({ id }) {
+	async delete(filter) {
 		const transaction = await User.sequelize.transaction();
 
 		try {
-			const userExists = await UserService.userExists(id);
+			const loggedUserExists = await UserService.userExists(
+				filter.user_id
+			);
 
-			if (!userExists) {
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
+			const user = await User.findOne({
+				where: { id: filter.id },
+				raw: false,
+				attributes: ["id", "name", "email", "password"],
+			});
+
+			if (!user) {
 				throw new Error("User not found");
 			}
 
-			const userDeleted = await User.destroy({
-				where: { id },
+			await user.destroy({
 				transaction,
 			});
 
 			await transaction.commit();
 
-			return userDeleted;
+			return user;
 		} catch (error) {
 			await transaction.rollback();
 			throw error;
 		}
 	}
 
-	async updatePassword({ userId, oldPassword, newPassword }) {
+	async updatePassword({ changes, filter }) {
 		const transaction = await User.sequelize.transaction();
 
 		try {
+			const loggedUserExists = await UserService.userExists(
+				filter.user_id
+			);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
 			const user = await User.findOne(
 				{
-					where: { id: userId },
+					where: { id: filter.id },
 				},
 				{ attributes: ["id", "password"], raw: false }
 			);
@@ -124,7 +175,7 @@ class UserService {
 			}
 
 			const isOldPasswordValid = await this.isValidPassword(
-				oldPassword,
+				changes.oldPassword,
 				user.password
 			);
 
@@ -132,13 +183,16 @@ class UserService {
 				return false;
 			}
 
-			const hashedNewPassword = await this.hashPassword(newPassword, 10);
+			const hashedNewPassword = await this.hashPassword(
+				changes.newPassword,
+				10
+			);
 
 			await User.update(
 				{ password: hashedNewPassword },
 				{
-					where: { id: userId },
-					transaction
+					where: { id: filter.id },
+					transaction,
 				}
 			);
 

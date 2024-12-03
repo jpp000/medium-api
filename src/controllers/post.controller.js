@@ -19,10 +19,12 @@ export class PostController extends BaseController {
 
 	async list(req, res) {
 		try {
-			const { userId } = req;
-			const { page } = req.filter;
+			const filter = {
+				page: req.filter.page,
+				user_id: req.auth?.user_id,
+			};
 
-			const posts = await this.postService.list({ page, userId });
+			const posts = await this.postService.list(filter);
 
 			this.successHandler(posts, res);
 		} catch (error) {
@@ -32,11 +34,12 @@ export class PostController extends BaseController {
 
 	async get(req, res) {
 		try {
-			const { postId } = req.filter;
-			const post = await this.postService.get({
-				postId,
-				userId: req.userId,
-			});
+			const filter = {
+				post_id: req.filter.id,
+				user_id: req.auth?.user_id,
+			};
+
+			const post = await this.postService.get(filter);
 
 			this.successHandler(post, res);
 		} catch (error) {
@@ -46,14 +49,14 @@ export class PostController extends BaseController {
 
 	async create(req, res) {
 		try {
-			const { userId } = req;
-			const { title, content } = req.data;
+			const options = {
+				data: req.data,
+				filter: {
+					user_id: req.auth.user_id,
+				},
+			};
 
-			const postCreated = await this.postService.create({
-				title,
-				content,
-				user_id: userId,
-			});
+			const postCreated = await this.postService.create(options);
 			this.successHandler(postCreated, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -62,12 +65,15 @@ export class PostController extends BaseController {
 
 	async update(req, res) {
 		try {
-			const { title, content } = req.data;
+			const options = {
+				changes: req.data,
+				filter: {
+					...req.filter,
+					user_id: req.auth.user_id,
+				},
+			};
 
-			await this.postService.update({
-				changes: { title, content },
-				postId: req.filter.postId,
-			});
+			await this.postService.update(options);
 
 			this.successHandler(true, res);
 		} catch (error) {
@@ -77,9 +83,12 @@ export class PostController extends BaseController {
 
 	async delete(req, res) {
 		try {
-			const { postId } = req.filter;
+			const filter = {
+				user_id: req.auth.user_id,
+				post_id: req.filter.id,
+			};
 
-			await this.postService.delete({ id: postId });
+			await this.postService.delete(filter);
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -88,10 +97,12 @@ export class PostController extends BaseController {
 
 	async like(req, res) {
 		try {
-			const { postId } = req.filter;
-			const { userId } = req;
+			const filter = {
+				user_id: req.auth.user_id,
+				post_id: req.filter.id,
+			};
 
-			await this.postService.like({ postId, userId });
+			await this.postService.like(filter);
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);
@@ -100,10 +111,12 @@ export class PostController extends BaseController {
 
 	async dislike(req, res) {
 		try {
-			const { postId } = req.filter;
-			const { userId } = req;
+			const filter = {
+				user_id: req.auth.user_id,
+				post_id: req.filter.id,
+			};
 
-			await this.postService.dislike({ postId, userId });
+			await this.postService.dislike(filter);
 			this.successHandler(true, res);
 		} catch (error) {
 			this.errorHandler(error, req, res);

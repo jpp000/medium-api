@@ -1,13 +1,24 @@
-import { Post, PostLike } from "../models";
+import { Post, PostLike, User } from "../models";
 import { PaginationUtils } from "../utils";
+import UserService from "./user.service";
 
 export class PostService {
-	async create({ title, content, user_id }) {
+	async create({ filter, data }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
+			const loggedUserExists = await UserService.userExists(
+				filter.user_id
+			);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
 			const postCreated = await Post.create(
-				{ title, content, user_id },
+				{ ...data, user_id: filter.user_id },
 				{
 					transaction,
 				}
@@ -22,23 +33,29 @@ export class PostService {
 		}
 	}
 
-	async get({ postId, userId }) {
+	async get({ post_id, user_id }) {
 		const scopes = [];
-		scopes.push("postUser");
 
-		if (userId) {
+		if (user_id) {
 			scopes.push({
 				name: "withUserLike",
-				options: [userId],
+				options: [user_id],
 			});
 		}
 
 		const post = await Post.scope(scopes).findOne({
 			where: {
-				id: postId,
+				id: post_id,
 			},
 			raw: false,
-			attributes: ["id", "title", "content", "total_likes", "created_at"],
+			attributes: [
+				"id",
+				"title",
+				"content",
+				"user_id",
+				"total_likes",
+				"created_at",
+			],
 		});
 
 		if (!post) {
@@ -48,20 +65,18 @@ export class PostService {
 		return post;
 	}
 
-	async list({ page, userId }) {
+	async list(filter) {
 		const promises = [];
-		const scopes = [];
+		const scopes = ["postUser"];
 		const Pagination = PaginationUtils.config({
-			page,
+			page: filter.page,
 			items_per_page: 20,
 		});
 
-		scopes.push("postUser");
-
-		if (userId) {
+		if (filter.user_id) {
 			scopes.push({
 				name: "withUserLike",
-				options: userId,
+				options: filter.user_id,
 			});
 		}
 
@@ -71,7 +86,6 @@ export class PostService {
 				raw: false,
 				attributes: [
 					"id",
-					"user_id",
 					"title",
 					"content",
 					"total_likes",
@@ -93,12 +107,31 @@ export class PostService {
 		};
 	}
 
-	async update({ changes, postId }) {
+	async update({ changes, filter }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
+			const loggedUserExists = await UserService.userExists(
+				filter.user_id
+			);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
+			const post = await this.get({
+				post_id: filter.id,
+				user_id: filter.user_id,
+			});
+
+			if (post.user_id !== filter.user_id) {
+				throw new Error("This post is not yours");
+			}
+
 			await Post.update(changes, {
-				where: { id: postId },
+				where: { id: filter.id },
 				transaction,
 			});
 
@@ -111,14 +144,26 @@ export class PostService {
 		}
 	}
 
-	async delete({ id }) {
+	async delete({ post_id, user_id }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
-			await this.get({ id });
+			const loggedUserExists = await UserService.userExists(user_id);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
+			const post = await this.get({ post_id, user_id });
+
+			if (post.user_id !== user_id) {
+				throw new Error();
+			}
 
 			await Post.destroy({
-				where: { id },
+				where: { id: post_id },
 				transaction,
 			});
 
@@ -131,12 +176,20 @@ export class PostService {
 		}
 	}
 
-	async like({ postId, userId }) {
+	async like({ post_id, user_id }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
+			const loggedUserExists = await UserService.userExists(user_id);
+
+			if (!loggedUserExists) {
+				throw new Error(
+					"Your session has expired or is invalid. Please log in again."
+				);
+			}
+
 			const post = await Post.findOne({
-				where: { id: postId },
+				where: { id: post_id },
 			});
 
 			if (!post) {
@@ -144,7 +197,7 @@ export class PostService {
 			}
 
 			const hasLike = await PostLike.findOne({
-				where: { post_id: postId, user_id: userId },
+				where: { post_id, user_id },
 			});
 
 			if (hasLike) {
@@ -153,8 +206,8 @@ export class PostService {
 
 			await PostLike.create(
 				{
-					post_id: postId,
-					user_id: userId,
+					post_id,
+					user_id,
 				},
 				{
 					transaction,
@@ -163,7 +216,7 @@ export class PostService {
 
 			await Post.increment("total_likes", {
 				by: 1,
-				where: { id: postId },
+				where: { id: post_id },
 				transaction,
 			});
 
@@ -176,35 +229,41 @@ export class PostService {
 		}
 	}
 
-	async dislike({ postId, userId }) {
+	async dislike({ post_id, user_id }) {
 		const transaction = await Post.sequelize.transaction();
 
 		try {
-			const post = await Post.findOne({ where: { id: postId } });
+			const user = User.findOne({
+				where: { id: user_id },
+			});
+
+			if (!user) {
+				throw new Error("User not found");
+			}
+
+			const post = await Post.findOne({ where: { id: post_id } });
 
 			if (!post) {
 				throw new Error("Post not found");
 			}
 
 			const hasLike = await PostLike.findOne({
-				where: { post_id: postId, user_id: userId },
+				where: { post_id, user_id },
 			});
 
 			if (!hasLike) {
 				throw new Error("Post already disliked");
 			}
 
-			await PostLike.destroy(
-				{
-					where: { post_id: postId, user_id: userId },
-				},
-				{ transaction }
-			);
+			await PostLike.destroy({
+				where: { post_id, user_id },
+				transaction,
+			});
 
 			await Post.decrement("total_likes", {
 				by: 1,
 				where: {
-					id: postId,
+					id: post_id,
 				},
 				transaction,
 			});

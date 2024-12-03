@@ -3,7 +3,7 @@ import * as yup from "yup";
 const findById = {
 	params: yup
 		.object({
-			postId: yup.number().required(),
+			id: yup.number().required(),
 		})
 		.noUnknown(),
 };

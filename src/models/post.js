@@ -34,7 +34,7 @@ export default class Post extends BaseModel {
 				updatedAt: "updated_at",
 				deletedAt: "deleted_at",
 				scopes: {
-					withUserLike: (id) => ({
+					withUserLike: (user_id) => ({
 						attributes: [
 							[
 								sequelize.literal(
@@ -50,7 +50,7 @@ export default class Post extends BaseModel {
 							],
 						],
 						replacements: {
-							user_id: id,
+							user_id,
 						},
 					}),
 					postUser: {
@@ -68,7 +68,15 @@ export default class Post extends BaseModel {
 	}
 
 	static associate(models) {
-		this.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
-		this.hasMany(models.PostLike, { foreignKey: "post_id", as: "likes" });
+		this.belongsTo(models.User, {
+			foreignKey: "user_id",
+			as: "user",
+			onDelete: "CASCADE",
+		});
+		this.hasMany(models.PostLike, {
+			foreignKey: "post_id",
+			as: "likes",
+			onDelete: "CASCADE",
+		});
 	}
 }
